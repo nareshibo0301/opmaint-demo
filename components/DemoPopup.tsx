@@ -359,7 +359,7 @@ export default function DemoPopup() {
                 <p className="odp__sub">Choose a convenient slot for your 1:1 demo.</p>
                 <div style={{ height: 600, minWidth: 320 }}>
                   <InlineWidget
-                    url="https://calendly.com/tanzeelurrehman/30min"
+                    url="https://calendly.com/tanzeel-opmaint/30min"
                     prefill={{
                       email: values.email,
                       firstName: values.firstName,
