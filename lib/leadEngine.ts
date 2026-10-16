@@ -4,7 +4,7 @@ import { checkWorkEmail } from "./workEmail";
 import { enrichFromEmail } from "./enrich";
 import type { VisitMeta } from "./metadata";
 
-export const TRACKED_FIELDS = ["email", "name", "phone", "description"] as const;
+export const TRACKED_FIELDS = ["email", "firstName", "lastName", "phone", "companyName", "source", "description"] as const;
 export type TrackedField = (typeof TRACKED_FIELDS)[number];
 
 export interface LeadUpdateInput {

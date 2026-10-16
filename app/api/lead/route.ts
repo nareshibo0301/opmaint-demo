@@ -53,8 +53,10 @@ export async function POST(req: NextRequest) {
   // Server-side validation on real submit.
   if (submit) {
     const email = (fields.email ?? "").trim();
-    const name = (fields.name ?? "").trim();
+    const firstName = (fields.firstName ?? "").trim();
+    const lastName = (fields.lastName ?? "").trim();
     const phone = (fields.phone ?? "").trim();
+    const companyName = (fields.companyName ?? "").trim();
     const check = checkWorkEmail(email);
     if (!check.ok) {
       return NextResponse.json(
@@ -62,10 +64,12 @@ export async function POST(req: NextRequest) {
         { status: 400 },
       );
     }
-    if (!name) return NextResponse.json({ error: "Please enter your name.", field: "name" }, { status: 400 });
+    if (!firstName) return NextResponse.json({ error: "Please enter your first name.", field: "firstName" }, { status: 400 });
+    if (!lastName) return NextResponse.json({ error: "Please enter your last name.", field: "lastName" }, { status: 400 });
     if (!validPhone(phone)) {
       return NextResponse.json({ error: "Please enter a valid phone number.", field: "phone" }, { status: 400 });
     }
+    if (!companyName) return NextResponse.json({ error: "Please enter your company name.", field: "companyName" }, { status: 400 });
   }
 
   const result = await applyLeadUpdate({

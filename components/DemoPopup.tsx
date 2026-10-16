@@ -2,11 +2,37 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-type Values = { email: string; name: string; phone: string; description: string };
+type Values = {
+  email: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  companyName: string;
+  source: string;
+  description: string;
+};
 type FieldErrors = Partial<Record<keyof Values, boolean>>;
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const CONSENT_KEY = "opm_consent";
+
+const SOURCES = [
+  "Select one",
+  "Google Search",
+  "LinkedIn",
+  "Word of mouth",
+  "Advertisement",
+  "Other",
+];
+
+const PARTNERS = [
+  { name: "Stanson", logo: "https://coresg-normal.trae.ai/api/ide/v1/text_to_image?prompt=Stanson%20logo%20clean%20minimal&image_size=landscape_4_3" },
+  { name: "Jain", logo: "https://coresg-normal.trae.ai/api/ide/v1/text_to_image?prompt=Jain%20logo%20clean%20minimal&image_size=landscape_4_3" },
+  { name: "Medimix", logo: "https://coresg-normal.trae.ai/api/ide/v1/text_to_image?prompt=Medimix%20logo%20clean%20minimal&image_size=landscape_4_3" },
+  { name: "Stanson2", logo: "https://coresg-normal.trae.ai/api/ide/v1/text_to_image?prompt=Stanson%20logo%20clean%20minimal&image_size=landscape_4_3" },
+  { name: "Jain2", logo: "https://coresg-normal.trae.ai/api/ide/v1/text_to_image?prompt=Jain%20logo%20clean%20minimal&image_size=landscape_4_3" },
+  { name: "Medimix2", logo: "https://coresg-normal.trae.ai/api/ide/v1/text_to_image?prompt=Medimix%20logo%20clean%20minimal&image_size=landscape_4_3" },
+];
 
 function validPhone(v: string): boolean {
   const d = v.replace(/\D/g, "");
@@ -21,12 +47,20 @@ export default function DemoPopup() {
   const [step2, setStep2] = useState(false);
   const [done, setDone] = useState(false);
   const [sending, setSending] = useState(false);
-  const [values, setValues] = useState<Values>({ email: "", name: "", phone: "", description: "" });
+  const [values, setValues] = useState<Values>({
+    email: "",
+    firstName: "",
+    lastName: "",
+    phone: "",
+    companyName: "",
+    source: "",
+    description: "",
+  });
   const [errors, setErrors] = useState<FieldErrors>({});
   const [status, setStatus] = useState(IDLE_STATUS);
-  const [thanksName, setThanksName] = useState("");
   const [consent, setConsent] = useState<boolean>(false);
   const [bannerOpen, setBannerOpen] = useState(false);
+  const [agreed, setAgreed] = useState(false);
 
   const sessionRef = useRef<string | null>(null);
   const valuesRef = useRef(values);
@@ -37,7 +71,7 @@ export default function DemoPopup() {
   const lastFocusRef = useRef<HTMLElement | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const emailRef = useRef<HTMLInputElement>(null);
-  const nameRef = useRef<HTMLInputElement>(null);
+  const firstNameRef = useRef<HTMLInputElement>(null);
 
   /* ---------------- session + consent on mount ---------------- */
   useEffect(() => {
@@ -153,7 +187,7 @@ export default function DemoPopup() {
     lastFocusRef.current = document.activeElement as HTMLElement;
     setOpen(true);
     document.documentElement.style.overflow = "hidden";
-    setTimeout(() => (step2 ? nameRef.current : emailRef.current)?.focus(), 60);
+    setTimeout(() => (step2 ? firstNameRef.current : emailRef.current)?.focus(), 60);
   }, [step2]);
 
   const closePopup = useCallback(() => {
@@ -173,10 +207,19 @@ export default function DemoPopup() {
       if (done) {
         setDone(false);
         setStep2(false);
-        setValues({ email: "", name: "", phone: "", description: "" });
+        setValues({
+          email: "",
+          firstName: "",
+          lastName: "",
+          phone: "",
+          companyName: "",
+          source: "",
+          description: "",
+        });
         setErrors({});
         setSending(false);
         setStatus(IDLE_STATUS);
+        setAgreed(false);
       }
       openPopup();
     }
@@ -184,14 +227,13 @@ export default function DemoPopup() {
     return () => document.removeEventListener("click", onClick);
   }, [openPopup, closePopup, done]);
 
-  /* Escape + focus trap */
+  /* Focus trap */
   useEffect(() => {
     if (!open) return;
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") closePopup();
       if (e.key === "Tab" && rootRef.current) {
         const nodes = Array.from(
-          rootRef.current.querySelectorAll<HTMLElement>('button, input, textarea, [href]'),
+          rootRef.current.querySelectorAll<HTMLElement>('button, input, textarea, [href], select'),
         ).filter((el) => !el.hasAttribute("disabled") && el.offsetParent !== null && el.tabIndex !== -1);
         if (!nodes.length) return;
         const first = nodes[0];
@@ -218,7 +260,7 @@ export default function DemoPopup() {
     }
     setErrors((e) => ({ ...e, email: false }));
     setStep2(true);
-    setTimeout(() => nameRef.current?.focus(), 350);
+    setTimeout(() => firstNameRef.current?.focus(), 350);
     return true;
   }
 
@@ -226,7 +268,9 @@ export default function DemoPopup() {
     setValues((v) => ({ ...v, [field]: value }));
     if (errors[field]) setErrors((e) => ({ ...e, [field]: false }));
     if (field === "email") {
-      if (!step2 && EMAIL_RE.test(value.trim())) goStep2();
+      if (!step2 && EMAIL_RE.test(value.trim())) {
+        goStep2();
+      }
     }
     scheduleSave({ [field]: value });
   }
@@ -239,19 +283,22 @@ export default function DemoPopup() {
     }
     const next: FieldErrors = {
       email: !EMAIL_RE.test(values.email.trim()),
-      name: !values.name.trim(),
+      firstName: !values.firstName.trim(),
+      lastName: !values.lastName.trim(),
       phone: !validPhone(values.phone),
+      companyName: !values.companyName.trim(),
     };
     setErrors(next);
-    if (next.email || next.name || next.phone) {
-      (next.email ? emailRef : next.name ? nameRef : null)?.current?.focus();
+    if (next.email || next.firstName || next.lastName || next.phone || next.companyName) {
+      (next.email ? emailRef : next.firstName ? firstNameRef : null)?.current?.focus();
       return;
     }
+    if (!agreed) return;
+
     setSending(true);
     if (timerRef.current) clearTimeout(timerRef.current);
     send({}, { submit: true })
       .then(() => {
-        setThanksName(values.name.trim().split(" ")[0] || "");
         setDone(true);
       })
       .catch(() => {
@@ -264,135 +311,169 @@ export default function DemoPopup() {
   return (
     <>
       <div className={cls} ref={rootRef} role="dialog" aria-modal="true" aria-labelledby="odp-title" aria-hidden={!open}>
-        <div className="odp__overlay" data-odp-close onClick={closePopup} />
+        <div className="odp__overlay" data-odp-close />
 
         <div className="odp__dialog">
-          <button className="odp__close" type="button" aria-label="Close" onClick={closePopup}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round">
-              <path d="M6 6l12 12M18 6L6 18" />
-            </svg>
-          </button>
-
-          <aside className="odp__side">
-            <div style={{ position: "relative", zIndex: 1 }}>
-              <span className="odp__tag">Book a demo</span>
-              <h2 id="odp-title">See the CMMS your plant will actually use.</h2>
-              <p>
-                A quick walkthrough of work orders, preventive maintenance and asset history, built around your plant.
-              </p>
-            </div>
-            <ul className="odp__points">
-              {[
-                "We migrate your data from MaintainX or UpKeep",
-                "Flat pricing: the whole plant, no per-seat rationing",
-                "Free training for admins and technicians",
-              ].map((t) => (
-                <li key={t}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="9" />
-                    <path d="M8 12.5l2.7 2.7L16 9.5" />
-                  </svg>
-                  {t}
-                </li>
-              ))}
-            </ul>
-          </aside>
-
           <div className="odp__main">
-            <form className="odp__form" onSubmit={onSubmit} noValidate>
-              <h3 className="odp__title">Schedule your demo</h3>
-              <p className="odp__sub">{step2 ? "Great! Just a few more details so we can set this up." : "Start with your work email. It takes under a minute."}</p>
+            {done ? (
+              <div className="odp__done" role="status" aria-live="polite">
+                <h2 className="odp__title">Thank you for booking a demo!</h2>
+                <p className="odp__sub">A member of our sales team will be in touch with you shortly.</p>
+                <button className="odp__btn" onClick={() => window.location.href = "/"}>
+                  Visit Website <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="3"><path d="M9 18l6-6-6-6"/></svg>
+                </button>
 
-              <label className={`odp__field${errors.email ? " has-error" : ""}`}>
-                <span>Work email</span>
-                <div className="odp__row">
+                <div className="odp__next-steps">
+                  <div className="odp__step-box">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="M22 6l-10 7L2 6"/></svg>
+                    <p>You&apos;ll receive a confirmation email shortly with the details of your scheduled demo.</p>
+                  </div>
+                  <div className="odp__step-box">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    <p>Our team will get back to with a tailored demo</p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <form className="odp__form" onSubmit={onSubmit} noValidate>
+                <h2 className="odp__title" id="odp-title">Schedule Demo</h2>
+                <p className="odp__sub">Book a 1:1 demo with an expert & experience the full potential of Opmaint.</p>
+
+                <label className={`odp__field${errors.email ? " has-error" : ""}`}>
+                  <span>Work email *</span>
                   <input
                     className={`odp__input${errors.email ? " is-invalid" : ""}`}
                     type="email"
                     ref={emailRef}
                     value={values.email}
-                    placeholder="you@company.com"
+                    placeholder="name@company.com"
                     autoComplete="email"
                     required
                     onChange={(e) => onField("email", e.target.value)}
                   />
+                </label>
+
+                <div className="odp__more">
+                  <div>
+                    <div className="odp__row">
+                      <label className={`odp__field${errors.firstName ? " has-error" : ""}`}>
+                        <span>First name *</span>
+                        <input
+                          className={`odp__input${errors.firstName ? " is-invalid" : ""}`}
+                          type="text"
+                          ref={firstNameRef}
+                          value={values.firstName}
+                          placeholder="Type you first name"
+                          autoComplete="given-name"
+                          onChange={(e) => onField("firstName", e.target.value)}
+                        />
+                      </label>
+                      <label className={`odp__field${errors.lastName ? " has-error" : ""}`}>
+                        <span>Last name *</span>
+                        <input
+                          className={`odp__input${errors.lastName ? " is-invalid" : ""}`}
+                          type="text"
+                          value={values.lastName}
+                          placeholder="Type you last name"
+                          autoComplete="family-name"
+                          onChange={(e) => onField("lastName", e.target.value)}
+                        />
+                      </label>
+                    </div>
+
+                    <label className={`odp__field${errors.phone ? " has-error" : ""}`}>
+                      <span>Phone number *</span>
+                      <div className="odp__row" style={{ gap: 0 }}>
+                        <div style={{ padding: "0 12px", border: "1px solid var(--odp-line)", borderRight: 0, borderRadius: "8px 0 0 8px", display: "flex", alignItems: "center", gap: 8, background: "#fff" }}>
+                          <span style={{ width: 20, height: 14, background: "#ff9900", borderRadius: 2 }}></span>
+                          <span style={{ fontWeight: 600 }}>+91</span>
+                          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="3"><path d="M6 9l6 6 6-6"/></svg>
+                        </div>
+                        <input
+                          className={`odp__input${errors.phone ? " is-invalid" : ""}`}
+                          style={{ borderRadius: "0 8px 8px 0" }}
+                          type="tel"
+                          value={values.phone}
+                          placeholder="Your number"
+                          autoComplete="tel"
+                          inputMode="tel"
+                          onChange={(e) => onField("phone", e.target.value)}
+                        />
+                      </div>
+                    </label>
+
+                    <label className={`odp__field${errors.companyName ? " has-error" : ""}`}>
+                      <span>Company name *</span>
+                      <input
+                        className={`odp__input${errors.companyName ? " is-invalid" : ""}`}
+                        type="text"
+                        value={values.companyName}
+                        placeholder="Your company name"
+                        onChange={(e) => onField("companyName", e.target.value)}
+                      />
+                    </label>
+
+                    <label className="odp__field">
+                      <span>Where did you find us?</span>
+                      <select
+                        className="odp__input"
+                        value={values.source}
+                        onChange={(e) => onField("source", e.target.value)}
+                      >
+                        {SOURCES.map((s) => (
+                          <option key={s} value={s === "Select one" ? "" : s}>{s}</option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <button className="odp__btn odp__btn--block" type="submit" disabled={sending || !agreed}>
+                      {sending ? "Sending…" : "Book a free demo"} <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="3"><path d="M9 18l6-6-6-6"/></svg>
+                    </button>
+
+                    <label className="odp__privacy">
+                      <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
+                      <span>By checking the box, you are agreeing to Opmaint&apos;s <a href="/privacy">Privacy Statement.</a></span>
+                    </label>
+                  </div>
                 </div>
-                <button className="odp__edit" type="button" onClick={() => { setStep2(false); emailRef.current?.focus(); }}>
-                  Not you? Edit email
-                </button>
-                <small className="odp__err">Please use your work email.</small>
-              </label>
 
-              <div className="odp__more">
-                <div>
-                  <label className={`odp__field${errors.name ? " has-error" : ""}`}>
-                    <span>Full name</span>
-                    <input
-                      className={`odp__input${errors.name ? " is-invalid" : ""}`}
-                      type="text"
-                      ref={nameRef}
-                      value={values.name}
-                      placeholder="Your name"
-                      autoComplete="name"
-                      onChange={(e) => onField("name", e.target.value)}
-                    />
-                    <small className="odp__err">Please enter your name.</small>
-                  </label>
-
-                  <label className={`odp__field${errors.phone ? " has-error" : ""}`}>
-                    <span>Phone number</span>
-                    <input
-                      className={`odp__input${errors.phone ? " is-invalid" : ""}`}
-                      type="tel"
-                      value={values.phone}
-                      placeholder="+91 98765 43210"
-                      autoComplete="tel"
-                      inputMode="tel"
-                      onChange={(e) => onField("phone", e.target.value)}
-                    />
-                    <small className="odp__err">Please enter a valid phone number.</small>
-                  </label>
-
-                  <label className="odp__field">
-                    <span>
-                      What would you like to see? <em>(optional)</em>
-                    </span>
-                    <textarea
-                      className="odp__input"
-                      rows={3}
-                      value={values.description}
-                      placeholder="Tell us about your plant, team size or current system…"
-                      onChange={(e) => onField("description", e.target.value)}
-                    />
-                  </label>
-                </div>
-              </div>
-
-              <input className="odp__hp" type="text" name="company_website" tabIndex={-1} autoComplete="off" aria-hidden="true" />
-
-              <button className="odp__btn odp__btn--block odp__submit" type="submit" disabled={sending}>
-                {sending ? "Sending…" : "Book my demo"}
-              </button>
-              <p className="odp__fine" role="status" aria-live="polite">
-                {status}
-              </p>
-            </form>
-
-            <div className="odp__done" role="status" aria-live="polite">
-              <div className="odp__tick">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.8} strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M5 12.5l4.5 4.5L19 7.5" />
-                </svg>
-              </div>
-              <h3 className="odp__title">You&apos;re on the list!</h3>
-              <p className="odp__sub" style={{ marginBottom: 22 }}>
-                Thanks <b>{thanksName}</b>, our team will reach out shortly to confirm a time.
-              </p>
-              <button className="odp__btn" type="button" onClick={closePopup}>
-                Close
-              </button>
-            </div>
+                <p className="odp__fine" style={{ marginTop: 24 }}>Fields marked with (*) are mandatory to fill.</p>
+              </form>
+            )}
           </div>
+
+          <aside className="odp__side">
+            <div>
+              <h3>Opmaint remembers,<br />so machines don&apos;t stop.</h3>
+              <ul className="odp__points">
+                {[
+                  "Every breakdown, fix and part used, recorded against the asset.",
+                  "Spares and purchase requests inside the work order itself.",
+                  "Built for the floor, technicians log and close jobs from their phone.",
+                ].map((t) => (
+                  <li key={t}>
+                    <span className="check">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={4} strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M20 6L9 17l-5-5" />
+                      </svg>
+                    </span>
+                    {t}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="odp__partners">
+              <p className="odp__partners-title">We partner with the world&apos;s leading organizations to advance their industries:</p>
+              <div className="odp__logo-grid">
+                {PARTNERS.map((p, idx) => (
+                  <div className="odp__logo-box" key={idx}>
+                    <img src={p.logo} alt={p.name} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </aside>
         </div>
       </div>
 

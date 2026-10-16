@@ -34,7 +34,8 @@ export default async function AdminPage({
   if (q) {
     where.OR = [
       { email: { contains: q, mode: "insensitive" } },
-      { name: { contains: q, mode: "insensitive" } },
+      { firstName: { contains: q, mode: "insensitive" } },
+      { lastName: { contains: q, mode: "insensitive" } },
       { phone: { contains: q } },
     ];
   }
@@ -145,7 +146,13 @@ export default async function AdminPage({
                   <td>
                     <Link href={`/admin/leads/${lead.id}`}>{lead.email || <span className="muted">—</span>}</Link>
                   </td>
-                  <td>{lead.name || <span className="muted">—</span>}</td>
+                  <td>
+                    {lead.firstName || lead.lastName ? (
+                      `${lead.firstName ?? ""} ${lead.lastName ?? ""}`.trim()
+                    ) : (
+                      <span className="muted">—</span>
+                    )}
+                  </td>
                   <td className="mono">{lead.phone || <span className="muted">—</span>}</td>
                   <td>
                     {lead.enrichment?.company ? (

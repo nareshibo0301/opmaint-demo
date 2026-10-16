@@ -66,10 +66,16 @@ export default async function LeadDetail({ params }: { params: { id: string } })
             <dd>
               {lead.isWorkEmail === null ? <span className="muted">—</span> : lead.isWorkEmail ? "Yes" : `No (${lead.rejectReason || "personal"})`}
             </dd>
-            <dt>Name</dt>
-            <dd>{lead.name || <span className="muted">—</span>}</dd>
+            <dt>First name</dt>
+            <dd>{lead.firstName || <span className="muted">—</span>}</dd>
+            <dt>Last name</dt>
+            <dd>{lead.lastName || <span className="muted">—</span>}</dd>
             <dt>Phone</dt>
             <dd className="mono">{lead.phone || <span className="muted">—</span>}</dd>
+            <dt>Company name</dt>
+            <dd>{lead.companyName || <span className="muted">—</span>}</dd>
+            <dt>Where did you find us?</dt>
+            <dd>{lead.source || <span className="muted">—</span>}</dd>
             <dt>Notes</dt>
             <dd style={{ whiteSpace: "pre-wrap" }}>{lead.description || <span className="muted">—</span>}</dd>
             <dt>First seen</dt>
