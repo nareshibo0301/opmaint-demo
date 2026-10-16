@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { checkWorkEmail, REASON_MESSAGE } from "@/lib/workEmail";
+import { InlineWidget, useCalendlyEventListener } from "react-calendly";
 
 type Values = {
   email: string;
@@ -46,6 +47,7 @@ const IDLE_STATUS =
 export default function DemoPopup() {
   const [open, setOpen] = useState(false);
   const [step2, setStep2] = useState(false);
+  const [showCalendly, setShowCalendly] = useState(false);
   const [done, setDone] = useState(false);
   const [sending, setSending] = useState(false);
   const [values, setValues] = useState<Values>({
@@ -72,6 +74,14 @@ export default function DemoPopup() {
   const rootRef = useRef<HTMLDivElement>(null);
   const emailRef = useRef<HTMLInputElement>(null);
   const firstNameRef = useRef<HTMLInputElement>(null);
+
+  /* ---------------- Calendly Event Listener ---------------- */
+  useCalendlyEventListener({
+    onEventScheduled: (e) => {
+      setShowCalendly(false);
+      setDone(true);
+    },
+  });
 
   /* ---------------- session + consent on mount ---------------- */
   useEffect(() => {
@@ -207,6 +217,7 @@ export default function DemoPopup() {
       if (done) {
         setDone(false);
         setStep2(false);
+        setShowCalendly(false);
         setValues({
           email: "",
           firstName: "",
@@ -305,14 +316,15 @@ export default function DemoPopup() {
     if (timerRef.current) clearTimeout(timerRef.current);
     send({}, { submit: true })
       .then(() => {
-        setDone(true);
+        setSending(false);
+        setShowCalendly(true);
       })
       .catch(() => {
         setSending(false);
       });
   }
 
-  const cls = ["odp", open && "is-open", step2 && "is-step2", done && "is-done"].filter(Boolean).join(" ");
+  const cls = ["odp", open && "is-open", step2 && "is-step2", showCalendly && "is-calendly", done && "is-done"].filter(Boolean).join(" ");
 
   return (
     <>
@@ -339,6 +351,25 @@ export default function DemoPopup() {
                     <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
                     <p>Our team will get back to with a tailored demo</p>
                   </div>
+                </div>
+              </div>
+            ) : showCalendly ? (
+              <div className="odp__calendly">
+                <h2 className="odp__title">Select a Time</h2>
+                <p className="odp__sub">Choose a convenient slot for your 1:1 demo.</p>
+                <div style={{ height: 600, minWidth: 320 }}>
+                  <InlineWidget
+                    url="https://calendly.com/tanzeelurrehman/30min"
+                    prefill={{
+                      email: values.email,
+                      firstName: values.firstName,
+                      lastName: values.lastName,
+                      name: `${values.firstName} ${values.lastName}`.trim(),
+                    }}
+                    styles={{
+                      height: '100%'
+                    }}
+                  />
                 </div>
               </div>
             ) : (

@@ -59,6 +59,9 @@ model Lead {
   status         String    @default("draft")
   rejectReason   String?
   isWorkEmail    Boolean?
+  
+  calendlyEventUri String?
+  scheduledAt      DateTime?
 
   firstSeenAt    DateTime  @default(now())
   lastActivityAt DateTime  @default(now())

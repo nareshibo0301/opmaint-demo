@@ -314,6 +314,21 @@
   padding-top: 0;
 }
 
+/* calendly & success state */
+.odp.is-calendly .odp__dialog,
+.odp.is-done .odp__dialog {
+  grid-template-columns: 1fr;
+  max-width: 800px;
+}
+.odp.is-calendly .odp__side,
+.odp.is-done .odp__side {
+  display: none;
+}
+.odp.is-calendly .odp__main,
+.odp.is-done .odp__main {
+  padding: 40px 32px;
+}
+
 /* success state */
 .odp__done {
   padding: 0;
