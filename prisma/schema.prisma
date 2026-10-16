@@ -48,8 +48,11 @@ model Lead {
   visit          Visit?    @relation(fields: [visitId], references: [id])
 
   email          String?
-  name           String?
+  firstName      String?
+  lastName       String?
   phone          String?
+  companyName    String?
+  source         String?
   description    String?
 
   /// draft | submitted | rejected (rejected = free/personal email used)
