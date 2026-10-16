@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { checkWorkEmail, REASON_MESSAGE } from "@/lib/workEmail";
 
 type Values = {
   email: string;
@@ -11,7 +12,7 @@ type Values = {
   source: string;
   description: string;
 };
-type FieldErrors = Partial<Record<keyof Values, boolean>>;
+type FieldErrors = Partial<Record<keyof Values, string>>;
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const CONSENT_KEY = "opm_consent";
@@ -60,7 +61,6 @@ export default function DemoPopup() {
   const [status, setStatus] = useState(IDLE_STATUS);
   const [consent, setConsent] = useState<boolean>(false);
   const [bannerOpen, setBannerOpen] = useState(false);
-  const [agreed, setAgreed] = useState(false);
 
   const sessionRef = useRef<string | null>(null);
   const valuesRef = useRef(values);
@@ -219,7 +219,6 @@ export default function DemoPopup() {
         setErrors({});
         setSending(false);
         setStatus(IDLE_STATUS);
-        setAgreed(false);
       }
       openPopup();
     }
@@ -231,6 +230,10 @@ export default function DemoPopup() {
   useEffect(() => {
     if (!open) return;
     function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        closePopup();
+        return;
+      }
       if (e.key === "Tab" && rootRef.current) {
         const nodes = Array.from(
           rootRef.current.querySelectorAll<HTMLElement>('button, input, textarea, [href], select'),
@@ -253,12 +256,13 @@ export default function DemoPopup() {
 
   /* ---------------- field handling ---------------- */
   function goStep2(): boolean {
-    if (!EMAIL_RE.test(values.email.trim())) {
-      setErrors((e) => ({ ...e, email: true }));
+    const check = checkWorkEmail(values.email);
+    if (!check.ok) {
+      setErrors((e) => ({ ...e, email: REASON_MESSAGE[check.reason] }));
       emailRef.current?.focus();
       return false;
     }
-    setErrors((e) => ({ ...e, email: false }));
+    setErrors((e) => ({ ...e, email: "" }));
     setStep2(true);
     setTimeout(() => firstNameRef.current?.focus(), 350);
     return true;
@@ -266,9 +270,10 @@ export default function DemoPopup() {
 
   function onField(field: keyof Values, value: string) {
     setValues((v) => ({ ...v, [field]: value }));
-    if (errors[field]) setErrors((e) => ({ ...e, [field]: false }));
+    if (errors[field]) setErrors((e) => ({ ...e, [field]: "" }));
     if (field === "email") {
-      if (!step2 && EMAIL_RE.test(value.trim())) {
+      const check = checkWorkEmail(value);
+      if (!step2 && check.ok) {
         goStep2();
       }
     }
@@ -281,19 +286,20 @@ export default function DemoPopup() {
       goStep2();
       return;
     }
+    const emailCheck = checkWorkEmail(values.email);
     const next: FieldErrors = {
-      email: !EMAIL_RE.test(values.email.trim()),
-      firstName: !values.firstName.trim(),
-      lastName: !values.lastName.trim(),
-      phone: !validPhone(values.phone),
-      companyName: !values.companyName.trim(),
+      email: emailCheck.ok ? "" : REASON_MESSAGE[emailCheck.reason],
+      firstName: values.firstName.trim() ? "" : "First name is required.",
+      lastName: values.lastName.trim() ? "" : "Last name is required.",
+      phone: validPhone(values.phone) ? "" : "Please enter a valid phone number.",
+      companyName: values.companyName.trim() ? "" : "Company name is required.",
     };
     setErrors(next);
     if (next.email || next.firstName || next.lastName || next.phone || next.companyName) {
-      (next.email ? emailRef : next.firstName ? firstNameRef : null)?.current?.focus();
+      const firstErr = next.email ? emailRef : next.firstName ? firstNameRef : null;
+      firstErr?.current?.focus();
       return;
     }
-    if (!agreed) return;
 
     setSending(true);
     if (timerRef.current) clearTimeout(timerRef.current);
@@ -311,25 +317,26 @@ export default function DemoPopup() {
   return (
     <>
       <div className={cls} ref={rootRef} role="dialog" aria-modal="true" aria-labelledby="odp-title" aria-hidden={!open}>
-        <div className="odp__overlay" data-odp-close />
+        <div className="odp__overlay" onClick={closePopup} />
 
         <div className="odp__dialog">
           <div className="odp__main">
             {done ? (
               <div className="odp__done" role="status" aria-live="polite">
-                <h2 className="odp__title">Thank you for booking a demo!</h2>
+                <h2 className="odp__title">Thank you for<br />booking a demo!</h2>
                 <p className="odp__sub">A member of our sales team will be in touch with you shortly.</p>
-                <button className="odp__btn" onClick={() => window.location.href = "/"}>
-                  Visit Website <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="3"><path d="M9 18l6-6-6-6"/></svg>
+                <button className="odp__btn" style={{ marginBottom: 64, width: 'fit-content', padding: '14px 28px' }} onClick={() => window.location.href = "/"}>
+                  Visit Website <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="3"><path d="M9 18l6-6-6-6"/></svg>
                 </button>
 
+                <h3 className="odp__next-title">What&apos;s Next?</h3>
                 <div className="odp__next-steps">
                   <div className="odp__step-box">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="M22 6l-10 7L2 6"/></svg>
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
                     <p>You&apos;ll receive a confirmation email shortly with the details of your scheduled demo.</p>
                   </div>
                   <div className="odp__step-box">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
                     <p>Our team will get back to with a tailored demo</p>
                   </div>
                 </div>
@@ -351,6 +358,7 @@ export default function DemoPopup() {
                     required
                     onChange={(e) => onField("email", e.target.value)}
                   />
+                  {errors.email && <div className="odp__error-msg">{errors.email}</div>}
                 </label>
 
                 <div className="odp__more">
@@ -367,6 +375,7 @@ export default function DemoPopup() {
                           autoComplete="given-name"
                           onChange={(e) => onField("firstName", e.target.value)}
                         />
+                        {errors.firstName && <div className="odp__error-msg">{errors.firstName}</div>}
                       </label>
                       <label className={`odp__field${errors.lastName ? " has-error" : ""}`}>
                         <span>Last name *</span>
@@ -378,6 +387,7 @@ export default function DemoPopup() {
                           autoComplete="family-name"
                           onChange={(e) => onField("lastName", e.target.value)}
                         />
+                        {errors.lastName && <div className="odp__error-msg">{errors.lastName}</div>}
                       </label>
                     </div>
 
@@ -400,6 +410,7 @@ export default function DemoPopup() {
                           onChange={(e) => onField("phone", e.target.value)}
                         />
                       </div>
+                      {errors.phone && <div className="odp__error-msg">{errors.phone}</div>}
                     </label>
 
                     <label className={`odp__field${errors.companyName ? " has-error" : ""}`}>
@@ -411,6 +422,7 @@ export default function DemoPopup() {
                         placeholder="Your company name"
                         onChange={(e) => onField("companyName", e.target.value)}
                       />
+                      {errors.companyName && <div className="odp__error-msg">{errors.companyName}</div>}
                     </label>
 
                     <label className="odp__field">
@@ -425,16 +437,15 @@ export default function DemoPopup() {
                         ))}
                       </select>
                     </label>
-
-                    <button className="odp__btn odp__btn--block" type="submit" disabled={sending || !agreed}>
-                      {sending ? "Sending…" : "Book a free demo"} <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="3"><path d="M9 18l6-6-6-6"/></svg>
-                    </button>
-
-                    <label className="odp__privacy">
-                      <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
-                      <span>By checking the box, you are agreeing to Opmaint&apos;s <a href="/privacy">Privacy Statement.</a></span>
-                    </label>
                   </div>
+                </div>
+
+                <button className="odp__btn odp__btn--block" type="submit" disabled={sending} style={{ marginTop: 24 }}>
+                  {sending ? "Sending…" : "Book a free demo"} <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="3"><path d="M9 18l6-6-6-6"/></svg>
+                </button>
+
+                <div className="odp__privacy">
+                  <span>By checking the box, you are agreeing to Opmaint&apos;s <a href="/privacy">Privacy Statement.</a></span>
                 </div>
 
                 <p className="odp__fine" style={{ marginTop: 24 }}>Fields marked with (*) are mandatory to fill.</p>
