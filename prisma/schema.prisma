@@ -1,0 +1,116 @@
+// Opmaint demo lead engine — data model
+// Key idea: values are NEVER overwritten in the log. Lead = current snapshot,
+// LeadEvent = append-only history (so "type -> erase -> retype" is all preserved).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// One anonymous browsing session. Created on page load BEFORE any interaction,
+/// so metadata is captured even if the visitor never types anything.
+model Visit {
+  id           String   @id @default(cuid())
+  sessionId    String   @unique
+  ip           String?
+  city         String?
+  region       String?
+  country      String?
+  userAgent    String?
+  device       String?
+  os           String?
+  browser      String?
+  language     String?
+  referrer     String?
+  landingUrl   String?
+  utmSource    String?
+  utmMedium    String?
+  utmCampaign   String?
+  consentGiven Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  lastSeenAt   DateTime @default(now())
+
+  lead   Lead?
+  events LeadEvent[]
+
+  @@index([createdAt])
+}
+
+/// The current known state for one visitor/session.
+model Lead {
+  id             String    @id @default(cuid())
+  sessionId      String    @unique
+  visitId        String?   @unique
+  visit          Visit?    @relation(fields: [visitId], references: [id])
+
+  email          String?
+  name           String?
+  phone          String?
+  description    String?
+
+  /// draft | submitted | rejected (rejected = free/personal email used)
+  status         String    @default("draft")
+  rejectReason   String?
+  isWorkEmail    Boolean?
+
+  firstSeenAt    DateTime  @default(now())
+  lastActivityAt DateTime  @default(now())
+  submittedAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  events     LeadEvent[]
+  enrichment Enrichment?
+
+  @@index([email])
+  @@index([status])
+  @@index([lastActivityAt])
+}
+
+/// Append-only change log. A new row per field change — nothing is lost.
+model LeadEvent {
+  id         String   @id @default(cuid())
+  leadId     String
+  lead       Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  visitId    String?
+  visit      Visit?   @relation(fields: [visitId], references: [id])
+
+  /// email | name | phone | description | status
+  field      String
+  oldValue   String?
+  newValue   String?
+  /// update | erase | create | submit
+  changeType String   @default("update")
+  /// lead status at the moment of the event
+  status     String?
+  source     String   @default("autosave") // autosave | beacon | submit
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([leadId, createdAt])
+  @@index([field])
+}
+
+/// Cached enrichment result for a lead (LinkedIn / company lookup).
+model Enrichment {
+  id                 String   @id @default(cuid())
+  leadId             String   @unique
+  lead               Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  provider           String
+  fullName           String?
+  title              String?
+  linkedinUrl        String?
+  company            String?
+  companyDomain      String?
+  companyLinkedinUrl String?
+  raw                String?  // JSON stringified provider payload
+  error              String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}

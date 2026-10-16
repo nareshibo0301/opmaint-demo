@@ -1,0 +1,442 @@
+/* ============================================================
+   Opmaint – demo booking popup styles (ported from the static
+   opmaint-demo-popup.html). Class names are unchanged.
+   ============================================================ */
+
+.odp,
+.odp * {
+  box-sizing: border-box;
+}
+.odp {
+  --odp-ink: #0b1b2b;
+  --odp-accent: #c6f432;
+  --odp-accent-ink: #0b1b2b;
+  --odp-bg: #ffffff;
+  --odp-muted: #5b6b7b;
+  --odp-line: #dbe2e8;
+  --odp-error: #d93025;
+  --odp-radius: 20px;
+  --odp-font: inherit;
+
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  font-family: var(--odp-font);
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.25s ease, visibility 0s linear 0.25s;
+}
+.odp.is-open {
+  visibility: visible;
+  opacity: 1;
+  transition: opacity 0.25s ease;
+}
+.odp__overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(6, 14, 24, 0.65);
+  backdrop-filter: blur(4px);
+}
+
+.odp__dialog {
+  position: relative;
+  width: 100%;
+  max-width: 920px;
+  max-height: calc(100vh - 40px);
+  display: grid;
+  grid-template-columns: 5fr 6fr;
+  background: var(--odp-bg);
+  border-radius: var(--odp-radius);
+  overflow: hidden;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35);
+  transform: translateY(18px) scale(0.98);
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.odp.is-open .odp__dialog {
+  transform: none;
+}
+
+/* ---------- left column ---------- */
+.odp__side {
+  background: var(--odp-ink);
+  color: #fff;
+  padding: 44px 36px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 28px;
+  position: relative;
+  overflow: hidden;
+}
+.odp__side::after {
+  content: "";
+  position: absolute;
+  width: 320px;
+  height: 320px;
+  right: -140px;
+  bottom: -140px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(198, 244, 50, 0.28), transparent 70%);
+  pointer-events: none;
+}
+.odp__tag {
+  display: inline-block;
+  align-self: flex-start;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--odp-accent-ink);
+  background: var(--odp-accent);
+  padding: 6px 12px;
+  border-radius: 999px;
+}
+.odp__side h2 {
+  margin: 16px 0 12px;
+  font-size: clamp(26px, 3vw, 34px);
+  line-height: 1.15;
+  font-weight: 700;
+  color: #fff;
+}
+.odp__side p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 15px;
+  line-height: 1.55;
+}
+.odp__points {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 14px;
+  position: relative;
+  z-index: 1;
+}
+.odp__points li {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  font-size: 14.5px;
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.4;
+}
+.odp__points svg {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  color: var(--odp-accent);
+}
+
+/* ---------- right column ---------- */
+.odp__main {
+  padding: 44px 40px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.odp__close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 3;
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(11, 27, 43, 0.07);
+  color: var(--odp-ink);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: background 0.2s, transform 0.2s;
+}
+.odp__close:hover {
+  background: rgba(11, 27, 43, 0.14);
+  transform: rotate(90deg);
+}
+.odp__close svg {
+  width: 18px;
+  height: 18px;
+}
+
+.odp__title {
+  margin: 0 0 6px;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--odp-ink);
+}
+.odp__sub {
+  margin: 0 0 24px;
+  font-size: 14.5px;
+  color: var(--odp-muted);
+}
+
+.odp__field {
+  display: block;
+  margin-bottom: 16px;
+}
+.odp__field > span {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--odp-ink);
+  margin-bottom: 6px;
+}
+.odp__field em {
+  font-style: normal;
+  font-weight: 400;
+  color: var(--odp-muted);
+}
+.odp__input {
+  width: 100%;
+  font: inherit;
+  font-size: 15px;
+  color: var(--odp-ink);
+  padding: 13px 14px;
+  background: #fff;
+  border: 1.5px solid var(--odp-line);
+  border-radius: 12px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.odp__input::placeholder {
+  color: #9aa7b3;
+}
+.odp__input:focus {
+  border-color: var(--odp-ink);
+  box-shadow: 0 0 0 4px rgba(198, 244, 50, 0.45);
+}
+.odp__input.is-invalid {
+  border-color: var(--odp-error);
+  box-shadow: 0 0 0 4px rgba(217, 48, 37, 0.12);
+}
+textarea.odp__input {
+  resize: vertical;
+  min-height: 96px;
+  max-height: 220px;
+  line-height: 1.5;
+}
+.odp__err {
+  display: none;
+  margin-top: 6px;
+  font-size: 12.5px;
+  color: var(--odp-error);
+}
+.odp__field.has-error .odp__err {
+  display: block;
+}
+
+.odp__row {
+  display: flex;
+  gap: 10px;
+}
+.odp__row .odp__input {
+  flex: 1;
+}
+
+.odp__btn {
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 0;
+  border-radius: 12px;
+  padding: 14px 22px;
+  background: var(--odp-accent);
+  color: var(--odp-accent-ink);
+  transition: transform 0.15s, box-shadow 0.2s, opacity 0.2s;
+  white-space: nowrap;
+}
+.odp__btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(198, 244, 50, 0.45);
+}
+.odp__btn:disabled {
+  opacity: 0.6;
+  cursor: progress;
+  transform: none;
+  box-shadow: none;
+}
+.odp__btn--block {
+  width: 100%;
+}
+
+/* progressive reveal */
+.odp__more {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows 0.45s ease, opacity 0.35s ease;
+}
+.odp__more > div {
+  overflow: hidden;
+  min-height: 0;
+}
+.odp.is-step2 .odp__more {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+.odp__submit {
+  display: none;
+}
+.odp.is-step2 .odp__submit {
+  display: block;
+}
+.odp__edit {
+  display: none;
+  background: none;
+  border: 0;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--odp-muted);
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+  margin-top: 6px;
+}
+.odp.is-step2 .odp__edit {
+  display: inline-block;
+}
+
+.odp__fine {
+  margin: 14px 0 0;
+  font-size: 12px;
+  color: var(--odp-muted);
+  text-align: center;
+}
+.odp__hp {
+  position: absolute !important;
+  left: -9999px;
+  opacity: 0;
+}
+
+/* success */
+.odp__done {
+  display: none;
+  text-align: center;
+  padding: 20px 0;
+}
+.odp.is-done .odp__form {
+  display: none;
+}
+.odp.is-done .odp__done {
+  display: block;
+}
+.odp__tick {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 18px;
+  border-radius: 50%;
+  background: var(--odp-accent);
+  color: var(--odp-accent-ink);
+  display: grid;
+  place-items: center;
+}
+.odp__tick svg {
+  width: 30px;
+  height: 30px;
+}
+
+/* ---------- mobile: stack columns ---------- */
+@media (max-width: 760px) {
+  .odp {
+    padding: 0;
+    align-items: flex-end;
+  }
+  .odp__dialog {
+    grid-template-columns: 1fr;
+    max-height: 94vh;
+    border-radius: var(--odp-radius) var(--odp-radius) 0 0;
+    overflow-y: auto;
+  }
+  .odp__side {
+    padding: 28px 24px 24px;
+    gap: 18px;
+  }
+  .odp__points {
+    display: none;
+  }
+  .odp__side h2 {
+    font-size: 22px;
+    margin: 12px 0 8px;
+  }
+  .odp__main {
+    padding: 26px 24px 32px;
+    overflow: visible;
+  }
+  .odp__close {
+    background: rgba(255, 255, 255, 0.18);
+    color: #fff;
+  }
+  .odp__row {
+    flex-direction: column;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .odp,
+  .odp__dialog,
+  .odp__more {
+    transition: none;
+  }
+}
+
+/* ---------- preview page shell ---------- */
+.odp-preview {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  background: #f4f6f8;
+}
+.odp-preview button {
+  font: inherit;
+  font-weight: 700;
+  padding: 16px 28px;
+  border: 0;
+  border-radius: 12px;
+  background: #c6f432;
+  color: #0b1b2b;
+  cursor: pointer;
+}
+
+/* ---------- consent banner ---------- */
+.odp-consent {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
+  z-index: 99998;
+  max-width: 720px;
+  margin: 0 auto;
+  background: #0b1b2b;
+  color: #fff;
+  border-radius: 14px;
+  padding: 14px 18px;
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  font-size: 13.5px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.3);
+}
+.odp-consent a {
+  color: #c6f432;
+}
+.odp-consent button {
+  font: inherit;
+  font-weight: 700;
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 18px;
+  background: #c6f432;
+  color: #0b1b2b;
+  cursor: pointer;
+}
