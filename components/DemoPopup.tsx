@@ -365,6 +365,15 @@ export default function DemoPopup() {
                       firstName: values.firstName,
                       lastName: values.lastName,
                       name: `${values.firstName} ${values.lastName}`.trim(),
+                      customAnswers: {
+                        a1: values.phone,
+                        a2: values.companyName,
+                        a3: values.source,
+                      },
+                    }}
+                    pageSettings={{
+                      hideEventTypeDetails: true,
+                      hideLandingPageDetails: true,
                     }}
                     styles={{
                       height: '100%'
