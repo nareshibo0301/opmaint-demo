@@ -19,19 +19,18 @@ export class CalendlyApiError extends Error {
 
 export function getCalendlyConfig() {
   const token = process.env.CALENDLY_API_KEY?.trim();
-  const eventTypeUri = process.env.CALENDLY_EVENT_TYPE_URI?.trim();
-  const phoneQuestion = process.env.CALENDLY_PHONE_QUESTION?.trim();
-  const companyQuestion = process.env.CALENDLY_COMPANY_QUESTION?.trim();
-  const sourceQuestion = process.env.CALENDLY_SOURCE_QUESTION?.trim();
+  const eventTypeUri =
+    process.env.CALENDLY_EVENT_TYPE_URI?.trim() ||
+    "https://api.calendly.com/event_types/d9cb4bb0-a0cf-4ac5-a273-fd64de7fbfdb";
+  const phoneQuestion = process.env.CALENDLY_PHONE_QUESTION?.trim() || "Phone number";
+  const companyQuestion = process.env.CALENDLY_COMPANY_QUESTION?.trim() || "Company name";
+  const sourceQuestion = process.env.CALENDLY_SOURCE_QUESTION?.trim() || "Where did you find us?";
 
   if (!token) {
     throw new CalendlyConfigurationError("CALENDLY_API_KEY is not configured.");
   }
   if (!eventTypeUri) {
     throw new CalendlyConfigurationError("CALENDLY_EVENT_TYPE_URI is not configured.");
-  }
-  if (!phoneQuestion || !companyQuestion || !sourceQuestion) {
-    throw new CalendlyConfigurationError("Calendly custom question labels are not fully configured.");
   }
   if (!eventTypeUri.startsWith(`${CALENDLY_API_URL}/event_types/`)) {
     throw new CalendlyConfigurationError("CALENDLY_EVENT_TYPE_URI must be a Calendly event type API URI.");
