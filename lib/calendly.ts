@@ -55,7 +55,9 @@ export async function calendlyRequest<T>(
   });
 
   if (!response.ok) {
-    throw new CalendlyApiError("Calendly API request failed.", response.status);
+    const errorBody = await response.text().catch(() => "");
+    console.error(`Calendly API error (${response.status}) on ${path}:`, errorBody);
+    throw new CalendlyApiError(errorBody || "Calendly API request failed.", response.status);
   }
 
   return response.json() as Promise<T>;

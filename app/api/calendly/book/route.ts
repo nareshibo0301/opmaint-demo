@@ -77,6 +77,61 @@ export async function POST(req: NextRequest) {
 
   try {
     const { token, eventTypeUri, phoneQuestion, companyQuestion, sourceQuestion } = getCalendlyConfig();
+
+    // Dynamically match custom questions configured on the Calendly event
+    const questionsAndAnswers: Array<{ question: string; answer: string; position: number }> = [];
+    try {
+      const eventTypeUuid = eventTypeUri.replace(/^.*\/event_types\//, "");
+      const eventTypeData = await calendlyRequest<{
+        resource: { custom_questions?: Array<{ name: string; position: number; enabled?: boolean }> };
+      }>(`/event_types/${eventTypeUuid}`, token);
+
+      const customQuestions = (eventTypeData.resource?.custom_questions ?? []).filter(
+        (q) => q.enabled !== false,
+      );
+
+      for (const cq of customQuestions) {
+        const qName = cq.name.toLowerCase();
+        let answer = "";
+        if (qName.includes("phone")) {
+          answer = phone;
+        } else if (qName.includes("company")) {
+          answer = companyName;
+        } else if (qName.includes("source") || qName.includes("find us") || qName.includes("hear")) {
+          answer = source;
+        } else if (
+          qName.includes("prepare") ||
+          qName.includes("help") ||
+          qName.includes("share") ||
+          qName.includes("anything")
+        ) {
+          const notes = [
+            `Company: ${companyName}`,
+            `Phone: ${phone}`,
+            source ? `Source: ${source}` : "",
+            lead.description ? `Note: ${lead.description}` : "",
+          ].filter(Boolean).join(" | ");
+          answer = notes;
+        } else if (cq.name === phoneQuestion) {
+          answer = phone;
+        } else if (cq.name === companyQuestion) {
+          answer = companyName;
+        } else if (cq.name === sourceQuestion) {
+          answer = source;
+        }
+
+        if (answer) {
+          questionsAndAnswers.push({
+            question: cq.name,
+            answer,
+            position: cq.position,
+          });
+        }
+      }
+    } catch (err) {
+      console.warn("Could not query event custom questions, skipping custom questions:", err);
+    }
+
     const result = await calendlyRequest<InviteeResponse>("/invitees", token, {
       method: "POST",
       body: JSON.stringify({
@@ -88,11 +143,7 @@ export async function POST(req: NextRequest) {
           email,
           timezone,
         },
-        questions_and_answers: [
-          { question: phoneQuestion, answer: phone, position: 0 },
-          { question: companyQuestion, answer: companyName, position: 1 },
-          ...(source ? [{ question: sourceQuestion, answer: source, position: 2 }] : []),
-        ],
+        ...(questionsAndAnswers.length > 0 ? { questions_and_answers: questionsAndAnswers } : {}),
       }),
     });
 
