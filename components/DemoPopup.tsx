@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { checkWorkEmail, REASON_MESSAGE } from "@/lib/workEmail";
-import { InlineWidget, useCalendlyEventListener } from "react-calendly";
 
 type Values = {
   email: string;
@@ -14,6 +13,7 @@ type Values = {
   description: string;
 };
 type FieldErrors = Partial<Record<keyof Values, string>>;
+type AvailabilitySlot = { startTime: string };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const CONSENT_KEY = "opm_consent";
@@ -41,6 +41,13 @@ function validPhone(v: string): boolean {
   return d.length >= 7 && d.length <= 15;
 }
 
+function localDateKey(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 const IDLE_STATUS =
   "Your details are saved as you type so you can edit them before submitting. We'll only use them to arrange the demo.";
 
@@ -48,6 +55,17 @@ export default function DemoPopup() {
   const [open, setOpen] = useState(false);
   const [step2, setStep2] = useState(false);
   const [showCalendly, setShowCalendly] = useState(false);
+  const [calendarMonth, setCalendarMonth] = useState(
+    () => new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+  );
+  const [availability, setAvailability] = useState<AvailabilitySlot[]>([]);
+  const [availabilityLoading, setAvailabilityLoading] = useState(false);
+  const [availabilityError, setAvailabilityError] = useState("");
+  const [selectedDate, setSelectedDate] = useState("");
+  const [selectedSlot, setSelectedSlot] = useState("");
+  const [booking, setBooking] = useState(false);
+  const [bookingError, setBookingError] = useState("");
+  const [bookingWarning, setBookingWarning] = useState("");
   const [done, setDone] = useState(false);
   const [sending, setSending] = useState(false);
   const [values, setValues] = useState<Values>({
@@ -75,14 +93,6 @@ export default function DemoPopup() {
   const emailRef = useRef<HTMLInputElement>(null);
   const firstNameRef = useRef<HTMLInputElement>(null);
 
-  /* ---------------- Calendly Event Listener ---------------- */
-  useCalendlyEventListener({
-    onEventScheduled: (e) => {
-      setShowCalendly(false);
-      setDone(true);
-    },
-  });
-
   /* ---------------- session + consent on mount ---------------- */
   useEffect(() => {
     fetch("/api/visit", { method: "POST" })
@@ -104,11 +114,58 @@ export default function DemoPopup() {
     setBannerOpen(false);
   }
 
+  useEffect(() => {
+    if (!showCalendly) return;
+
+    const controller = new AbortController();
+    const now = new Date();
+    const monthStart = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), 1);
+    const rangeStart = new Date(Math.max(monthStart.getTime(), now.getTime() + 60_000));
+    const monthEnd = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1);
+    monthEnd.setMilliseconds(-1);
+    const rangeEnd = new Date(Math.min(monthEnd.getTime(), now.getTime() + 30 * 24 * 60 * 60 * 1000));
+
+    setAvailability([]);
+    setSelectedDate("");
+    setSelectedSlot("");
+    setAvailabilityError("");
+    setAvailabilityLoading(true);
+
+    if (rangeEnd <= rangeStart) {
+      setAvailabilityLoading(false);
+      return () => controller.abort();
+    }
+
+    const query = new URLSearchParams({
+      startTime: rangeStart.toISOString(),
+      endTime: rangeEnd.toISOString(),
+    });
+    fetch(`/api/calendly/availability?${query.toString()}`, { signal: controller.signal })
+      .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Availability could not be loaded.");
+        return data as { slots: AvailabilitySlot[] };
+      })
+      .then((data) => setAvailability(data.slots))
+      .catch((error: Error) => {
+        if (error.name !== "AbortError") setAvailabilityError(error.message);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setAvailabilityLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [calendarMonth, showCalendly]);
+
   /* ---------------- save helpers ---------------- */
   const send = useCallback(
     (partial: Partial<Values>, opts: { submit?: boolean; beacon?: boolean } = {}) => {
       const sessionId = sessionRef.current;
-      if (!sessionId) return Promise.resolve({ ok: false });
+      if (!sessionId) {
+        return opts.submit
+          ? Promise.reject(new Error("Your session is still starting. Please try again."))
+          : Promise.resolve({ ok: false });
+      }
 
       const payload = {
         sessionId,
@@ -218,6 +275,10 @@ export default function DemoPopup() {
         setDone(false);
         setStep2(false);
         setShowCalendly(false);
+        setSelectedDate("");
+        setSelectedSlot("");
+        setBookingError("");
+        setBookingWarning("");
         setValues({
           email: "",
           firstName: "",
@@ -317,12 +378,55 @@ export default function DemoPopup() {
     send({}, { submit: true })
       .then(() => {
         setSending(false);
+        setCalendarMonth(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+        setBookingError("");
+        setBookingWarning("");
         setShowCalendly(true);
       })
       .catch(() => {
         setSending(false);
       });
   }
+
+  async function confirmBooking() {
+    if (!selectedSlot || !sessionRef.current) return;
+
+    setBooking(true);
+    setBookingError("");
+    try {
+      const response = await fetch("/api/calendly/book", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          startTime: selectedSlot,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Your booking could not be completed.");
+      setBookingWarning(data.warning || "");
+      setShowCalendly(false);
+      setDone(true);
+    } catch (error) {
+      setBookingError(error instanceof Error ? error.message : "Your booking could not be completed.");
+    } finally {
+      setBooking(false);
+    }
+  }
+
+  const calendarDays = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 0).getDate();
+  const calendarOffset = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), 1).getDay();
+  const slotsByDate = new Map<string, AvailabilitySlot[]>();
+  availability.forEach((slot) => {
+    const key = localDateKey(new Date(slot.startTime));
+    slotsByDate.set(key, [...(slotsByDate.get(key) ?? []), slot]);
+  });
+  const selectedDateSlots = slotsByDate.get(selectedDate) ?? [];
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const monthLabel = new Intl.DateTimeFormat(undefined, { month: "long", year: "numeric" }).format(calendarMonth);
+  const currentMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  const nextMonthStart = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1);
+  const bookingWindowEnd = Date.now() + 30 * 24 * 60 * 60 * 1000;
 
   const cls = ["odp", open && "is-open", step2 && "is-step2", showCalendly && "is-calendly", done && "is-done"].filter(Boolean).join(" ");
 
@@ -336,7 +440,9 @@ export default function DemoPopup() {
             {done ? (
               <div className="odp__done" role="status" aria-live="polite">
                 <h2 className="odp__title">Thank you for<br />booking a demo!</h2>
-                <p className="odp__sub">A member of our sales team will be in touch with you shortly.</p>
+                <p className="odp__sub">
+                  {bookingWarning || "A member of our sales team will be in touch with you shortly."}
+                </p>
                 <button className="odp__btn" style={{ marginBottom: 64, width: 'fit-content', padding: '14px 28px' }} onClick={() => window.location.href = "/"}>
                   Visit Website <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="3"><path d="M9 18l6-6-6-6"/></svg>
                 </button>
@@ -354,32 +460,112 @@ export default function DemoPopup() {
                 </div>
               </div>
             ) : showCalendly ? (
-              <div className="odp__calendly">
-                <h2 className="odp__title">Select a Time</h2>
-                <p className="odp__sub">Choose a convenient slot for your 1:1 demo.</p>
-                <div style={{ height: 600, minWidth: 320 }}>
-                  <InlineWidget
-                    url="https://calendly.com/tanzeel-opmaint/30min"
-                    prefill={{
-                      email: values.email,
-                      firstName: values.firstName,
-                      lastName: values.lastName,
-                      name: `${values.firstName} ${values.lastName}`.trim(),
-                      customAnswers: {
-                        a1: values.phone,
-                        a2: values.companyName,
-                        a3: values.source,
-                      },
-                    }}
-                    pageSettings={{
-                      hideEventTypeDetails: true,
-                      hideLandingPageDetails: true,
-                    }}
-                    styles={{
-                      height: '100%'
-                    }}
-                  />
+              <div className="odp__booking">
+                <h2 className="odp__title">Choose a date and time</h2>
+                <p className="odp__sub">All times are shown in {timezone}.</p>
+                <div className="odp__booking-layout">
+                  <section className="odp__calendar" aria-label="Choose a date">
+                    <div className="odp__calendar-header">
+                      <button
+                        type="button"
+                        className="odp__calendar-nav"
+                        aria-label="Previous month"
+                        disabled={calendarMonth <= currentMonth}
+                        onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1))}
+                      >
+                        ‹
+                      </button>
+                      <strong>{monthLabel}</strong>
+                      <button
+                        type="button"
+                        className="odp__calendar-nav"
+                        aria-label="Next month"
+                        disabled={nextMonthStart.getTime() > bookingWindowEnd}
+                        onClick={() => setCalendarMonth(nextMonthStart)}
+                      >
+                        ›
+                      </button>
+                    </div>
+                    <div className="odp__calendar-grid odp__calendar-weekdays" aria-hidden="true">
+                      {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+                        <span key={day}>{day}</span>
+                      ))}
+                    </div>
+                    <div className="odp__calendar-grid">
+                      {Array.from({ length: calendarOffset }, (_, index) => (
+                        <span className="odp__calendar-empty" key={`empty-${index}`} />
+                      ))}
+                      {Array.from({ length: calendarDays }, (_, index) => {
+                        const day = index + 1;
+                        const date = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), day);
+                        const key = localDateKey(date);
+                        const hasSlots = (slotsByDate.get(key)?.length ?? 0) > 0;
+                        const isPast = date < new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
+                        return (
+                          <button
+                            type="button"
+                            className={`odp__calendar-day${selectedDate === key ? " is-selected" : ""}`}
+                            key={key}
+                            disabled={!hasSlots || isPast || availabilityLoading}
+                            aria-pressed={selectedDate === key}
+                            aria-label={new Intl.DateTimeFormat(undefined, {
+                              weekday: "long",
+                              month: "long",
+                              day: "numeric",
+                            }).format(date)}
+                            onClick={() => {
+                              setSelectedDate(key);
+                              setSelectedSlot("");
+                              setBookingError("");
+                            }}
+                          >
+                            {day}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {availabilityLoading && <p className="odp__availability-message">Loading available dates…</p>}
+                    {availabilityError && <p className="odp__availability-error" role="alert">{availabilityError}</p>}
+                    {!availabilityLoading && !availabilityError && availability.length === 0 && (
+                      <p className="odp__availability-message">No available times this month. Try another month.</p>
+                    )}
+                  </section>
+
+                  <section className="odp__times" aria-label="Choose a time">
+                    <h3>{selectedDate ? new Intl.DateTimeFormat(undefined, { weekday: "long", month: "long", day: "numeric" }).format(new Date(`${selectedDate}T12:00:00`)) : "Available times"}</h3>
+                    {selectedDateSlots.length ? (
+                      <div className="odp__time-list">
+                        {selectedDateSlots.map((slot) => (
+                          <button
+                            type="button"
+                            className={`odp__time-slot${selectedSlot === slot.startTime ? " is-selected" : ""}`}
+                            key={slot.startTime}
+                            aria-pressed={selectedSlot === slot.startTime}
+                            onClick={() => {
+                              setSelectedSlot(slot.startTime);
+                              setBookingError("");
+                            }}
+                          >
+                            {new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(new Date(slot.startTime))}
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="odp__availability-message">
+                        {selectedDate ? "No times available for this date." : "Select an available date to see times."}
+                      </p>
+                    )}
+                  </section>
                 </div>
+                {bookingError && <p className="odp__availability-error" role="alert">{bookingError}</p>}
+                <button
+                  type="button"
+                  className="odp__btn odp__btn--block odp__confirm-booking"
+                  disabled={!selectedSlot || booking}
+                  onClick={confirmBooking}
+                >
+                  {booking ? "Booking…" : "Confirm demo time"}
+                </button>
               </div>
             ) : (
               <form className="odp__form" onSubmit={onSubmit} noValidate>

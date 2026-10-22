@@ -329,6 +329,135 @@
   padding: 40px 32px;
 }
 
+.odp.is-calendly .odp__dialog {
+  height: auto;
+  max-height: calc(100vh - 40px);
+}
+
+.odp__booking-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(190px, 0.72fr);
+  gap: 24px;
+}
+
+.odp__calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 40px;
+  margin-bottom: 12px;
+  color: var(--odp-forest);
+}
+
+.odp__calendar-nav {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--odp-line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--odp-forest);
+  font: inherit;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.odp__calendar-nav:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.odp__calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  justify-items: center;
+  gap: 6px;
+}
+
+.odp__calendar-weekdays {
+  margin-bottom: 8px;
+  color: var(--odp-muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.odp__calendar-day,
+.odp__calendar-empty {
+  width: 100%;
+  max-width: 40px;
+  aspect-ratio: 1;
+}
+
+.odp__calendar-day {
+  border: 1px solid transparent;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--odp-ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.odp__calendar-day:not(:disabled):hover,
+.odp__calendar-day.is-selected {
+  border-color: var(--odp-forest);
+  background: var(--odp-forest);
+  color: #fff;
+}
+
+.odp__calendar-day:disabled {
+  color: #a4aaa7;
+  cursor: not-allowed;
+}
+
+.odp__times h3 {
+  min-height: 40px;
+  margin: 0 0 12px;
+  display: flex;
+  align-items: center;
+  color: var(--odp-forest);
+  font-size: 15px;
+}
+
+.odp__time-list {
+  display: grid;
+  gap: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.odp__time-slot {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid var(--odp-forest);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--odp-forest);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.odp__time-slot:hover,
+.odp__time-slot.is-selected {
+  background: var(--odp-forest);
+  color: #fff;
+}
+
+.odp__availability-message,
+.odp__availability-error {
+  color: var(--odp-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.odp__availability-error {
+  color: var(--odp-error);
+}
+
+.odp__confirm-booking {
+  margin-top: 24px;
+}
+
 /* success state */
 .odp__done {
   padding: 0;
@@ -380,6 +509,20 @@
   }
   .odp__main {
     padding: 40px 32px;
+  }
+}
+
+@media (max-width: 620px) {
+  .odp.is-calendly .odp__main {
+    padding: 28px 20px;
+  }
+  .odp__booking-layout {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .odp__time-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-height: 190px;
   }
 }
 

@@ -9,7 +9,10 @@ export async function POST(req: Request) {
 
     if (event === "invitee.created") {
       const email = payload.email;
-      const eventUri = payload.event; // The URI of the scheduled event
+      const eventUri = payload.event;
+      const scheduledAt = payload.scheduled_event?.start_time
+        ? new Date(payload.scheduled_event.start_time)
+        : null;
 
       // Find the most recent lead with this email
       const lead = await prisma.lead.findFirst({
@@ -18,26 +21,28 @@ export async function POST(req: Request) {
       });
 
       if (lead) {
+        const alreadyRecorded = lead.status === "scheduled" && lead.calendlyEventUri === eventUri;
         await prisma.lead.update({
           where: { id: lead.id },
           data: {
             status: "scheduled",
             calendlyEventUri: eventUri,
-            scheduledAt: new Date(payload.created_at),
+            scheduledAt: scheduledAt ?? lead.scheduledAt ?? new Date(payload.created_at),
           },
         });
 
-        // Also record a lead event in the timeline
-        await prisma.leadEvent.create({
-          data: {
-            leadId: lead.id,
-            field: "status",
-            oldValue: lead.status,
-            newValue: "scheduled",
-            changeType: "update",
-            source: "calendly_webhook",
-          },
-        });
+        if (!alreadyRecorded) {
+          await prisma.leadEvent.create({
+            data: {
+              leadId: lead.id,
+              field: "status",
+              oldValue: lead.status,
+              newValue: "scheduled",
+              changeType: "update",
+              source: "calendly_webhook",
+            },
+          });
+        }
       }
     }
 
