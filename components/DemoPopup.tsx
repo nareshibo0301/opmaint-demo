@@ -78,6 +78,7 @@ export default function DemoPopup() {
     description: "",
   });
   const [errors, setErrors] = useState<FieldErrors>({});
+  const [submitError, setSubmitError] = useState("");
   const [status, setStatus] = useState(IDLE_STATUS);
   const [consent, setConsent] = useState<boolean>(false);
   const [bannerOpen, setBannerOpen] = useState(false);
@@ -343,6 +344,7 @@ export default function DemoPopup() {
   function onField(field: keyof Values, value: string) {
     setValues((v) => ({ ...v, [field]: value }));
     if (errors[field]) setErrors((e) => ({ ...e, [field]: "" }));
+    if (submitError) setSubmitError("");
     if (field === "email") {
       const check = checkWorkEmail(value);
       if (!step2 && check.ok) {
@@ -374,6 +376,7 @@ export default function DemoPopup() {
     }
 
     setSending(true);
+    setSubmitError("");
     if (timerRef.current) clearTimeout(timerRef.current);
     send({}, { submit: true })
       .then(() => {
@@ -383,8 +386,9 @@ export default function DemoPopup() {
         setBookingWarning("");
         setShowCalendly(true);
       })
-      .catch(() => {
+      .catch((err: Error) => {
         setSending(false);
+        setSubmitError(err?.message || "Failed to submit. Please check your connection and try again.");
       });
   }
 
@@ -665,6 +669,8 @@ export default function DemoPopup() {
                     </label>
                   </div>
                 </div>
+
+                {submitError && <p className="odp__availability-error" role="alert" style={{ marginTop: 16 }}>{submitError}</p>}
 
                 <button className="odp__btn odp__btn--block" type="submit" disabled={sending} style={{ marginTop: 24 }}>
                   {sending ? "Sending…" : "Book a free demo"} <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="3"><path d="M9 18l6-6-6-6"/></svg>
