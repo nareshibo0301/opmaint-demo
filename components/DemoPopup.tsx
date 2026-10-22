@@ -161,11 +161,10 @@ export default function DemoPopup() {
   /* ---------------- save helpers ---------------- */
   const send = useCallback(
     (partial: Partial<Values>, opts: { submit?: boolean; beacon?: boolean } = {}) => {
-      const sessionId = sessionRef.current;
+      let sessionId = sessionRef.current;
       if (!sessionId) {
-        return opts.submit
-          ? Promise.reject(new Error("Your session is still starting. Please try again."))
-          : Promise.resolve({ ok: false });
+        sessionId = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `sess_${Date.now()}`;
+        sessionRef.current = sessionId;
       }
 
       const payload = {

@@ -16,28 +16,36 @@ export async function POST(req: NextRequest) {
   let sessionId = readSessionId(req);
   if (!sessionId) sessionId = newSessionId();
 
-  await prisma.visit.upsert({
-    where: { sessionId },
-    update: { lastSeenAt: new Date() },
-    create: {
-      sessionId,
-      ip: meta.ip,
-      city: meta.city,
-      region: meta.region,
-      country: meta.country,
-      userAgent: meta.userAgent,
-      device: meta.device,
-      os: meta.os,
-      browser: meta.browser,
-      language: meta.language,
-      referrer: meta.referrer,
-      landingUrl: meta.landingUrl,
-    },
-  });
+  try {
+    await prisma.visit.upsert({
+      where: { sessionId },
+      update: { lastSeenAt: new Date() },
+      create: {
+        sessionId,
+        ip: meta.ip,
+        city: meta.city,
+        region: meta.region,
+        country: meta.country,
+        userAgent: meta.userAgent,
+        device: meta.device,
+        os: meta.os,
+        browser: meta.browser,
+        language: meta.language,
+        referrer: meta.referrer,
+        landingUrl: meta.landingUrl,
+      },
+    });
 
-  const res = NextResponse.json({ ok: true, sessionId, meta });
-  if (req.cookies.get(SESSION_COOKIE)?.value !== sessionId) {
-    res.cookies.set({ ...sessionCookieOptions(), value: sessionId });
+    const res = NextResponse.json({ ok: true, sessionId, meta });
+    if (req.cookies.get(SESSION_COOKIE)?.value !== sessionId) {
+      res.cookies.set({ ...sessionCookieOptions(), value: sessionId });
+    }
+    return res;
+  } catch (error) {
+    console.error("Visit error:", error);
+    return NextResponse.json(
+      { ok: false, error: error instanceof Error ? error.message : "Database connection error" },
+      { status: 500 }
+    );
   }
-  return res;
 }

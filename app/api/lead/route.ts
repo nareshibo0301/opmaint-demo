@@ -72,24 +72,32 @@ export async function POST(req: NextRequest) {
     if (!companyName) return NextResponse.json({ error: "Please enter your company name.", field: "companyName" }, { status: 400 });
   }
 
-  const result = await applyLeadUpdate({
-    sessionId,
-    fields,
-    submit,
-    consent: body.consent === true,
-    source: submit ? "submit" : body.source === "beacon" ? "beacon" : "autosave",
-    meta,
-  });
+  try {
+    const result = await applyLeadUpdate({
+      sessionId,
+      fields,
+      submit,
+      consent: body.consent === true,
+      source: submit ? "submit" : body.source === "beacon" ? "beacon" : "autosave",
+      meta,
+    });
 
-  return NextResponse.json({
-    ...result,
-    message:
-      submit && result.status === "submitted"
-        ? "Your demo request is saved."
-        : result.emailAccepted
-          ? "Saved. You can keep editing before you submit."
-          : result.rejectReason
-            ? REASON_MESSAGE[result.rejectReason] || "Please check your email."
-            : "Saving your details…",
-  });
+    return NextResponse.json({
+      ...result,
+      message:
+        submit && result.status === "submitted"
+          ? "Your demo request is saved."
+          : result.emailAccepted
+            ? "Saved. You can keep editing before you submit."
+            : result.rejectReason
+              ? REASON_MESSAGE[result.rejectReason] || "Please check your email."
+              : "Saving your details…",
+    });
+  } catch (error) {
+    console.error("Lead update error:", error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Failed to save lead to database." },
+      { status: 500 }
+    );
+  }
 }
