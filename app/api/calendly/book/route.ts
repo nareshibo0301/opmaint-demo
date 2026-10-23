@@ -132,34 +132,50 @@ export async function POST(req: NextRequest) {
       console.warn("Could not query event custom questions, skipping custom questions:", err);
     }
 
-    const result = await calendlyRequest<InviteeResponse>("/invitees", token, {
-      method: "POST",
-      body: JSON.stringify({
-        event_type: eventTypeUri,
-        start_time: startTime.toISOString(),
-        invitee: {
-          first_name: firstName,
-          last_name: lastName,
-          email,
-          timezone,
-        },
-        ...(questionsAndAnswers.length > 0 ? { questions_and_answers: questionsAndAnswers } : {}),
-      }),
-    });
+    let result: InviteeResponse | null = null;
+    try {
+      result = await calendlyRequest<InviteeResponse>("/invitees", token, {
+        method: "POST",
+        body: JSON.stringify({
+          event_type: eventTypeUri,
+          start_time: startTime.toISOString(),
+          location: {
+            kind: "google_conference",
+          },
+          invitee: {
+            first_name: firstName,
+            last_name: lastName,
+            email,
+            timezone,
+          },
+          ...(questionsAndAnswers.length > 0 ? { questions_and_answers: questionsAndAnswers } : {}),
+        }),
+      });
+    } catch (apiError) {
+      console.warn("Direct Calendly booking failed, using seamless scheduling fallback:", apiError);
+    }
+
+    const slotIso = startTime.toISOString();
+    const fallbackUrl = new URL(`https://calendly.com/tanzeel-opmaint/30min/${slotIso}`);
+    fallbackUrl.searchParams.set("name", `${firstName} ${lastName}`.trim());
+    fallbackUrl.searchParams.set("email", email);
 
     try {
       const latestLead = await prisma.lead.findUnique({ where: { sessionId } });
       const alreadyRecorded =
         latestLead?.status === "scheduled" &&
+        result?.resource?.event &&
         latestLead.calendlyEventUri === result.resource.event;
+
       await prisma.lead.update({
         where: { id: lead.id },
         data: {
           status: "scheduled",
-          calendlyEventUri: result.resource.event ?? lead.calendlyEventUri,
+          calendlyEventUri: result?.resource?.event ?? lead.calendlyEventUri,
           scheduledAt: startTime,
         },
       });
+
       if (!alreadyRecorded) {
         await prisma.leadEvent.create({
           data: {
@@ -169,15 +185,18 @@ export async function POST(req: NextRequest) {
             newValue: "scheduled",
             changeType: "update",
             status: "scheduled",
-            source: "calendly_api",
+            source: result ? "calendly_api" : "calendly_fallback",
           },
         });
       }
     } catch (error) {
-      console.error("Calendly booking was created but the lead record could not be updated:", error);
+      console.error("Lead could not be updated after booking:", error);
+    }
+
+    if (!result) {
       return NextResponse.json({
         ok: true,
-        warning: "Your time is booked. We could not update our local record, but you do not need to book again.",
+        fallbackUrl: fallbackUrl.toString(),
       });
     }
 

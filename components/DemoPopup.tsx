@@ -410,6 +410,9 @@ export default function DemoPopup() {
       setBookingWarning(data.warning || "");
       setShowCalendly(false);
       setDone(true);
+      if (data.fallbackUrl) {
+        window.location.href = data.fallbackUrl;
+      }
     } catch (error) {
       setBookingError(error instanceof Error ? error.message : "Your booking could not be completed.");
     } finally {
