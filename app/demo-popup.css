@@ -579,3 +579,247 @@
   color: #0b1b2b;
   cursor: pointer;
 }
+
+/* ---------- Country Code & Phone Picker ---------- */
+.odp__phone-field {
+  position: relative;
+}
+
+.odp__phone-container {
+  display: flex;
+  position: relative;
+  width: 100%;
+}
+
+.odp__country-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  height: 50px;
+  background: #ffffff;
+  border: 1px solid var(--odp-line);
+  border-right: none;
+  border-radius: 8px 0 0 8px;
+  font-family: inherit;
+  font-size: 15px;
+  color: #1a1a1a;
+  cursor: pointer;
+  flex-shrink: 0;
+  user-select: none;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+.odp__country-btn:hover {
+  background-color: #f7f9f8;
+}
+
+.odp__country-btn:focus-visible {
+  outline: none;
+  border-color: var(--odp-forest);
+  z-index: 2;
+}
+
+.odp__country-flag {
+  font-size: 20px;
+  line-height: 1;
+  display: inline-block;
+}
+
+.odp__country-code {
+  font-weight: 600;
+  font-size: 14px;
+  color: #1a1a1a;
+}
+
+.odp__country-arrow {
+  display: inline-flex;
+  align-items: center;
+  color: #666;
+  transition: transform 0.2s ease;
+}
+
+.odp__country-btn.is-active .odp__country-arrow {
+  transform: rotate(180deg);
+}
+
+.odp__phone-input {
+  flex: 1;
+  border-radius: 0 8px 8px 0 !important;
+  min-width: 0;
+}
+
+.odp__country-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  width: 320px;
+  max-width: 90vw;
+  background: #ffffff;
+  border: 1px solid var(--odp-line);
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: odpFadeIn 0.18s ease-out;
+}
+
+@keyframes odpFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.odp__country-search-wrap {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--odp-line);
+  background: #fafafa;
+}
+
+.odp__country-search-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--odp-line);
+  border-radius: 6px;
+  font-size: 13.5px;
+  font-family: inherit;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.odp__country-search-input:focus {
+  border-color: var(--odp-forest);
+}
+
+.odp__country-list {
+  max-height: 220px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+}
+
+.odp__country-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 14px;
+  font-size: 14px;
+  color: #1a1a1a;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.odp__country-item:hover,
+.odp__country-item.is-selected {
+  background-color: #f0f4f1;
+}
+
+.odp__country-item-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  overflow: hidden;
+}
+
+.odp__country-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 170px;
+}
+
+.odp__country-dial {
+  font-weight: 600;
+  color: var(--odp-muted);
+  font-size: 13px;
+  margin-left: 8px;
+}
+
+/* ---------- Timezone Bar & Selector ---------- */
+.odp__timezone-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  padding: 10px 14px;
+  background: #f7f9f8;
+  border: 1px solid var(--odp-line);
+  border-radius: 8px;
+  font-size: 13px;
+  color: #2b3a30;
+}
+
+.odp__timezone-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  color: var(--odp-forest);
+  white-space: nowrap;
+}
+
+.odp__timezone-select-wrap {
+  flex: 1;
+  min-width: 200px;
+}
+
+.odp__timezone-select {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--odp-line);
+  border-radius: 6px;
+  background: #ffffff;
+  font-size: 13px;
+  font-family: inherit;
+  color: #1a1a1a;
+  font-weight: 500;
+  cursor: pointer;
+  outline: none;
+}
+
+.odp__timezone-select:focus {
+  border-color: var(--odp-forest);
+}
+
+.odp__timezone-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #e6efe8;
+  color: var(--odp-forest);
+  margin-top: 4px;
+}
+
+.odp__time-slot-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 6px 4px;
+}
+
+.odp__time-primary {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.odp__time-secondary {
+  font-size: 11px;
+  opacity: 0.82;
+  font-weight: 400;
+}
+

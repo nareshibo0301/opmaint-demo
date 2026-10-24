@@ -159,6 +159,9 @@ export async function POST(req: NextRequest) {
     const fallbackUrl = new URL(`https://calendly.com/tanzeel-opmaint/30min/${slotIso}`);
     fallbackUrl.searchParams.set("name", `${firstName} ${lastName}`.trim());
     fallbackUrl.searchParams.set("email", email);
+    if (timezone) {
+      fallbackUrl.searchParams.set("timezone", timezone);
+    }
 
     try {
       const latestLead = await prisma.lead.findUnique({ where: { sessionId } });
